@@ -1,5 +1,5 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import {
   Text,
   View,
@@ -8,7 +8,10 @@ import {
   useColorScheme,
   Animated,
 } from 'react-native';
-import { Camera, CameraPermissionStatus } from 'react-native-vision-camera';
+import {
+  useCameraPermission,
+  useMicrophonePermission,
+} from 'react-native-vision-camera';
 import { Routes } from '../../navigation';
 import { getStyles } from './styles';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,12 +23,15 @@ const BANNER_CAM = require('../../assets/images/cam.png') as ImageRequireSource;
 const BANNER_MIC = require('../../assets/images/mic.png') as ImageRequireSource;
 
 export const PermissionsScreen = ({ navigation }: Props) => {
-  const isDarkMode = useColorScheme() === 'dark';
+  const { hasPermission: cameraPermission, requestPermission: requestCamera } =
+    useCameraPermission();
 
-  const [cameraPermissionStatus, setCameraPermissionStatus] =
-    useState<CameraPermissionStatus>('not-determined');
-  const [microphonePermissionStatus, setMicrophonePermissionStatus] =
-    useState<CameraPermissionStatus>('not-determined');
+  const {
+    hasPermission: microphonePermission,
+    requestPermission: requestMicrophone,
+  } = useMicrophonePermission();
+
+  const isDarkMode = useColorScheme() === 'dark';
 
   const opacityCam = useRef<Animated.Value>(new Animated.Value(1)).current;
   const opacityMic = useRef<Animated.Value>(new Animated.Value(0)).current;
@@ -53,42 +59,26 @@ export const PermissionsScreen = ({ navigation }: Props) => {
   }, [opacityCam, opacityMic]);
 
   const requestMicrophonePermission = useCallback(async () => {
-    const permission = await Camera.requestMicrophonePermission();
+    const permission = await requestMicrophone();
 
-    if (permission === 'denied') {
+    if (!permission) {
       await Linking.openSettings();
     }
-    setMicrophonePermissionStatus(permission);
-  }, []);
+  }, [requestMicrophone]);
 
   const requestCameraPermission = useCallback(async () => {
-    const permission = await Camera.requestCameraPermission();
+    const permission = await requestCamera();
 
-    if (permission === 'denied') {
+    if (!permission) {
       await Linking.openSettings();
     }
-    setCameraPermissionStatus(permission);
-  }, []);
-
-  const getPermissions = useCallback(async () => {
-    const cameraPermission = await Camera.requestCameraPermission();
-    const microphonePermission = await Camera.requestMicrophonePermission();
-    setCameraPermissionStatus(cameraPermission);
-    setMicrophonePermissionStatus(microphonePermission);
-  }, []);
+  }, [requestCamera]);
 
   useEffect(() => {
-    getPermissions();
-  }, [getPermissions]);
-
-  useEffect(() => {
-    if (
-      cameraPermissionStatus === 'granted' &&
-      microphonePermissionStatus === 'granted'
-    ) {
-      navigation.replace('HOME');
+    if (cameraPermission && microphonePermission) {
+      setTimeout(() => navigation.replace('CAMERA'), 500);
     }
-  }, [cameraPermissionStatus, microphonePermissionStatus, navigation]);
+  }, [cameraPermission, microphonePermission, navigation]);
 
   const styles = getStyles(isDarkMode);
 
@@ -108,13 +98,13 @@ export const PermissionsScreen = ({ navigation }: Props) => {
           <Text style={styles.permissionText}>Vision Camera needs:</Text>
           <PermissionItem
             name="Camera"
-            isGranted={cameraPermissionStatus === 'granted'}
+            isGranted={cameraPermission}
             requestPermission={requestCameraPermission}
             dark={isDarkMode}
           />
           <PermissionItem
             name="Microphone"
-            isGranted={microphonePermissionStatus === 'granted'}
+            isGranted={microphonePermission}
             requestPermission={requestMicrophonePermission}
             dark={isDarkMode}
           />

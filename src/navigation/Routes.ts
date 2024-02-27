@@ -1,5 +1,5 @@
 export const StackNavigator = {
-  HOME: undefined,
+  CAMERA: undefined,
   PERMISSIONS: undefined,
 };
 
